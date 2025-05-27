@@ -1,6 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2025 MetaDandy benitezarroyojoseph@gmail.com
 */
 package cmd
 
@@ -14,19 +13,33 @@ import (
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "GoCelerator",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Use:   "goce",
+	Short: "GoCelerator (alias goce): CLI for bootstrapping and managing Go projects",
+	Long: `goce is the command-line interface for generating and managing Go applications with a modular architecture.
+	Available commands:
+	init      Initialize a new Go project
+				Usage: goce init <name> [--fiber] [--goversion <ver>] [--no-air] [--no-docker]
+	serve     Start the development server (with optional hot-reload)
+	generate  Create new modules or core packages with stubs
+	migrate   Manage database migrations (Gorm/SQL)
+	seed      Run data seeders
+	env       Generate a .env file and guide for API keys
+	docker    Build Docker image and start services with Docker Compose
+	test      Run tests with coverage report
+	doctor    Verify prerequisites (Go, PostgreSQL, FFmpeg, environment variables)
+	version   Show goce and Go versions installed
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Examples:
+	# Scaffold a standard net/http project
+	goce init myapp
+
+	# Scaffold a Fiber project
+	goce init myapp --fiber
+
+	# Skip Air and Docker setup
+	goce init myapp --no-air --no-docker
+	`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

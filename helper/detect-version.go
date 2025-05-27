@@ -13,7 +13,7 @@ func DetectGoVersion() (string, error) {
 	}
 
 	parts := strings.Fields(string(out))
-	if len(parts) > 3 {
+	if len(parts) < 3 {
 		return "", fmt.Errorf("unexpected go version output: %q", out)
 	}
 

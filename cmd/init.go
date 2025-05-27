@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright © 2025 MetaDandy benitezarroyojoseph@gmail.com
 */
 package cmd
 
@@ -54,6 +54,10 @@ var initCmd = &cobra.Command{
 		if useFiber {
 			baseDir = "templates/fiber"
 		}
+		origDir, err := os.Getwd()
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Generating proyect '%s' using %s...\n", name,
 			map[bool]string{true: "Fiber", false: "net/http"}[useFiber],
 		)
@@ -62,7 +66,7 @@ var initCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("could not detect Go version: %w", err)
 			}
-			fmt.Printf("Go version to use [%s]: ", detected)
+			fmt.Printf("Detected Go version: %s\nPress Enter to accept or type a different version: ", detected)
 			var input string
 			fmt.Scanln(&input)
 			if input == "" {
@@ -80,9 +84,6 @@ var initCmd = &cobra.Command{
 		}
 
 		if !noAir {
-			if err := os.Chdir(dest); err != nil {
-				return fmt.Errorf("failed to chdir to %s: %w", dest, err)
-			}
 			if _, err := exec.LookPath("air"); err != nil {
 				fmt.Println("Air not found, installing github.com/cosmtrek/air@latest…")
 				if out, err := exec.Command("go", "install", "github.com/cosmtrek/air@latest").CombinedOutput(); err != nil {
@@ -91,6 +92,7 @@ var initCmd = &cobra.Command{
 			}
 			fmt.Println("Running `air init` to generate hot-reload config…")
 			cmdAir := exec.Command("air", "init")
+			cmdAir.Dir = dest
 			cmdAir.Stdout = os.Stdout
 			cmdAir.Stderr = os.Stderr
 			if err := cmdAir.Run(); err != nil {
@@ -98,13 +100,15 @@ var initCmd = &cobra.Command{
 			}
 		}
 
-		if !noAir {
+		if !noDocker {
 			helper.CopyTemplates("templates/docker/prod", dest, templatesFS, dataTempl)
 
 			if !noAir {
 				helper.CopyTemplates("templates/docker/dev", dest, templatesFS, dataTempl)
 			}
 		}
+
+		_ = os.Chdir(origDir)
 
 		return nil
 	},
