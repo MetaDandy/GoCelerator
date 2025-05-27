@@ -90,14 +90,10 @@ var initCmd = &cobra.Command{
 					return fmt.Errorf("failed to install Air: %s", string(out))
 				}
 			}
-			fmt.Println("Running `air init` to generate hot-reload config…")
-			cmdAir := exec.Command("air", "init")
-			cmdAir.Dir = dest
-			cmdAir.Stdout = os.Stdout
-			cmdAir.Stderr = os.Stderr
-			if err := cmdAir.Run(); err != nil {
-				return fmt.Errorf("air init failed: %w", err)
+			if err := helper.CopyTemplates("templates/air", dest, templatesFS, dataTempl); err != nil {
+				return fmt.Errorf("failed to generate .air.toml: %w", err)
 			}
+			fmt.Println("Generated custom .air.toml for hot-reload (cmd/main.go).")
 		}
 
 		if !noDocker {

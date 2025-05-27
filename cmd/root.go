@@ -21,13 +21,13 @@ var rootCmd = &cobra.Command{
 	init      Initialize a new Go project
 				Usage: goce init <name> [--fiber] [--goversion <ver>] [--no-air] [--no-docker]
 	serve     Start the development server (with optional hot-reload)
+	docker    Build Docker image and start services with Docker Compose
 	generate  Create new modules or core packages with stubs
 	migrate   Manage database migrations (Gorm/SQL)
 	seed      Run data seeders
 	env       Generate a .env file and guide for API keys
-	docker    Build Docker image and start services with Docker Compose
 	test      Run tests with coverage report
-	doctor    Verify prerequisites (Go, PostgreSQL, FFmpeg, environment variables)
+	doctor    Verify prerequisites (Go, PostgreSQL, environment variables)
 	version   Show goce and Go versions installed
 
 	Examples:
