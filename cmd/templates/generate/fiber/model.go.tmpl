@@ -1,0 +1,10 @@
+package models
+
+import (
+    "github.com/google/uuid"
+)
+
+type {{ .Name }} struct {
+    ID   uuid.UUID `gorm:"type:uuid;primaryKey;"`
+    Name string    `gorm:"type:varchar(255);not null"`
+}

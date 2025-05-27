@@ -1,0 +1,89 @@
+package helper
+
+import (
+    "net/http"
+    "strconv"
+
+    "gorm.io/gorm"
+)
+
+type FindAllOptions struct {
+    OrderBy     string
+    Sort        string
+    Search      string
+    Limit       uint
+    Offset      uint
+    ShowDeleted bool
+    OnlyDeleted bool
+}
+
+func NewFindAllOptionsFromRequest(r *http.Request) *FindAllOptions {
+    q := r.URL.Query()
+
+    orderBy := q.Get("order_by")
+    if orderBy == "" {
+        orderBy = "created_at"
+    }
+    sort := q.Get("sort")
+    if sort == "" {
+        sort = "asc"
+    }
+    search := q.Get("search")
+
+    limitParam := q.Get("limit")
+    if limitParam == "" {
+        limitParam = "10"
+    }
+    offsetParam := q.Get("offset")
+    if offsetParam == "" {
+        offsetParam = "0"
+    }
+    limit, _ := strconv.ParseUint(limitParam, 10, 32)
+    offset, _ := strconv.ParseUint(offsetParam, 10, 32)
+
+    showDeleted, _ := strconv.ParseBool(q.Get("show_deleted"))
+    onlyDeleted, _ := strconv.ParseBool(q.Get("only_deleted"))
+
+    return &FindAllOptions{
+        OrderBy:     orderBy,
+        Sort:        sort,
+        Search:      search,
+        Limit:       uint(limit),
+        Offset:      uint(offset),
+        ShowDeleted: showDeleted,
+        OnlyDeleted: onlyDeleted,
+    }
+}
+
+func ApplyFindAllOptions(query *gorm.DB, opts *FindAllOptions) (*gorm.DB, int64) {
+    var total int64
+
+    if opts == nil {
+        query.Count(&total)
+        return query, total
+    }
+
+    if opts.OnlyDeleted {
+        query = query.Unscoped().Where("deleted_at IS NOT NULL")
+    } else if opts.ShowDeleted {
+        query = query.Unscoped()
+    }
+
+    if opts.OrderBy != "" {
+        direction := "asc"
+        if opts.Sort == "desc" {
+            direction = "desc"
+        }
+        query = query.Order(opts.OrderBy + " " + direction)
+    }
+
+    if opts.Search != "" {
+        query = query.Where("name ILIKE ?", "%"+opts.Search+"%")
+    }
+
+    query.Count(&total)
+
+    query = query.Limit(int(opts.Limit)).Offset(int(opts.Offset))
+
+    return query, total
+}

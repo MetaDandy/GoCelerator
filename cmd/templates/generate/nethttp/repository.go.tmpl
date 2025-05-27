@@ -1,0 +1,73 @@
+package {{ .Name }}
+
+import (
+    "{{ .ModulePath }}/helper"
+    "{{ .ModulePath }}/src/model"
+    "gorm.io/gorm"
+)
+
+// Repository encapsulates the data access logic for {{ .Name }}.
+type Repository struct {
+    db *gorm.DB
+}
+
+// NewRepository creates a new instance of Repository.
+func NewRepository(db *gorm.DB) *Repository {
+    return &Repository{db: db}
+}
+
+// Create inserts a new {{ .Name }} entity into the database.
+func (r *Repository) Create(entity *model.{{ .Name }}) error {
+    return r.db.Create(entity).Error
+}
+
+// Update saves the changes of an existing {{ .Name }} entity.
+func (r *Repository) Update(entity *model.{{ .Name }}) error {
+    return r.db.Save(entity).Error
+}
+
+// FindAll returns all {{ .Name }} entities according to pagination,
+// ordering and search options, along with the total count before limiting.
+func (r *Repository) FindAll(opts *helper.FindAllOptions) ([]model.{{ .Name }}, int64, error) {
+    var list []model.{{ .Name }}
+    query := r.db.Model(model.{{ .Name }}{})
+    var total int64
+
+    query, total = helper.ApplyFindAllOptions(query, opts)
+    if err := query.Find(&list).Error; err != nil {
+        return nil, total, err
+    }
+    return list, total, nil
+}
+
+// FindByID retrieves a {{ .Name }} by its ID.
+func (r *Repository) FindByID(id string) (*model.{{ .Name }}, error) {
+    var ent model.{{ .Name }}
+    if err := r.db.First(&ent, "id = ?", id).Error; err != nil {
+        return nil, err
+    }
+    return &ent, nil
+}
+
+// FindByIDUnscoped retrieves even logically deleted entities.
+func (r *Repository) FindByIDUnscoped(id string) (*model.{{ .Name }}, error) {
+    var ent model.{{ .Name }}
+    if err := r.db.Unscoped().First(&ent, "id = ?", id).Error; err != nil {
+        return nil, err
+    }
+    return &ent, nil
+}
+
+// SoftDelete performs a soft delete of a {{ .Name }}.
+func (r *Repository) SoftDelete(id string) error {
+    return r.db.Delete(&model.{{ .Name }}{}, "id = ?", id).Error
+}
+
+// Restore undoes a soft deletion.
+func (r *Repository) Restore(id string) error {
+    return r.db.Unscoped().
+        Model(&model.{{ .Name }}{}).
+        Where("id = ?", id).
+        Update("deleted_at", nil).
+        Error
+}
