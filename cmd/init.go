@@ -6,12 +6,11 @@ package cmd
 import (
 	"embed"
 	"fmt"
-	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"strings"
-	"text/template"
 
+	"github.com/Metadandy/GoCelerator/helper"
 	"github.com/spf13/cobra"
 )
 
@@ -19,10 +18,20 @@ import (
 var templatesFS embed.FS
 
 var (
-	useFiber bool
+	useFiber  bool
+	goVersion string
+	noAir     bool
+	noDocker  bool
 )
 
-// initCmd represents the init command
+func init() {
+	rootCmd.AddCommand(initCmd)
+	initCmd.Flags().BoolVarP(&useFiber, "fiber", "f", false, "use Fiber in the template")
+	initCmd.Flags().StringVar(&goVersion, "goversion", "", "Go version to use (e.g. 1.24.1). If empty, will detect or ask")
+	initCmd.Flags().BoolVar(&noAir, "no-air", false, "skip generating Air configuration")
+	initCmd.Flags().BoolVar(&noDocker, "no-docker", false, "skip generating Docker configuration")
+}
+
 var initCmd = &cobra.Command{
 	Use:   "init [name]",
 	Short: "Initialize a go project.",
@@ -48,46 +57,55 @@ var initCmd = &cobra.Command{
 		fmt.Printf("Generating proyect '%s' using %s...\n", name,
 			map[bool]string{true: "Fiber", false: "net/http"}[useFiber],
 		)
-		return fs.WalkDir(templatesFS, baseDir, func(path string, d fs.DirEntry, err error) error {
+		if goVersion == "" {
+			detected, err := helper.DetectGoVersion()
 			if err != nil {
-				return err
+				return fmt.Errorf("could not detect Go version: %w", err)
 			}
-			rel, err := filepath.Rel(baseDir, path)
-			if err != nil {
-				return err
-			}
-			if rel == "." {
-				return os.MkdirAll(dest, 0755)
-			}
-			var targetRel string
-			if d.IsDir() {
-				targetRel = rel
+			fmt.Printf("Go version to use [%s]: ", detected)
+			var input string
+			fmt.Scanln(&input)
+			if input == "" {
+				goVersion = detected
 			} else {
-				targetRel = strings.TrimSuffix(rel, ".tmpl")
+				goVersion = input
 			}
-			target := filepath.Join(dest, targetRel)
-			if d.IsDir() {
-				return os.MkdirAll(target, 0755)
-			}
-			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return err
-			}
-			data, err := templatesFS.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			t := template.Must(template.New(rel).Parse(string(data)))
-			f, err := os.Create(target)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			return t.Execute(f, map[string]string{"ProjectName": name})
-		})
-	},
-}
+		}
+		dataTempl := map[string]string{
+			"ProjectName": name,
+			"GoVersion":   goVersion,
+		}
+		if err := helper.CopyTemplates(baseDir, dest, templatesFS, dataTempl); err != nil {
+			return fmt.Errorf("error al copiar plantillas: %w", err)
+		}
 
-func init() {
-	rootCmd.AddCommand(initCmd)
-	initCmd.Flags().BoolVarP(&useFiber, "fiber", "f", false, "use Fiber in the template")
+		if !noAir {
+			if err := os.Chdir(dest); err != nil {
+				return fmt.Errorf("failed to chdir to %s: %w", dest, err)
+			}
+			if _, err := exec.LookPath("air"); err != nil {
+				fmt.Println("Air not found, installing github.com/cosmtrek/air@latest…")
+				if out, err := exec.Command("go", "install", "github.com/cosmtrek/air@latest").CombinedOutput(); err != nil {
+					return fmt.Errorf("failed to install Air: %s", string(out))
+				}
+			}
+			fmt.Println("Running `air init` to generate hot-reload config…")
+			cmdAir := exec.Command("air", "init")
+			cmdAir.Stdout = os.Stdout
+			cmdAir.Stderr = os.Stderr
+			if err := cmdAir.Run(); err != nil {
+				return fmt.Errorf("air init failed: %w", err)
+			}
+		}
+
+		if !noAir {
+			helper.CopyTemplates("templates/docker/prod", dest, templatesFS, dataTempl)
+
+			if !noAir {
+				helper.CopyTemplates("templates/docker/dev", dest, templatesFS, dataTempl)
+			}
+		}
+
+		return nil
+	},
 }
