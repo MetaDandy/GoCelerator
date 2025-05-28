@@ -1,0 +1,147 @@
+package {{ .Package }}
+
+import (
+    "encoding/json"
+    "net/http"
+
+    "github.com/gorilla/mux"
+    "{{ .ModulePath }}/helper"
+    "{{ .ModulePath }}/middleware"
+)
+
+// Handler encapsulates HTTP handlers for {{ .Name }}.
+type Handler struct {
+    svc *Service
+}
+
+// NewHandler creates a new Handler.
+func NewHandler(s *Service) *Handler {
+    return &Handler{svc: s}
+}
+
+// RegisterRoutes binds all {{ .Name | lower }} routes to a Gorilla Mux router.
+func (h *Handler) RegisterRoutes(router *mux.Router) {
+    r := router.PathPrefix("/{{ .Package }}").Subrouter()
+    r.Use(middleware.JwtMiddleware)
+    r.HandleFunc("", h.FindAll).Methods(http.MethodGet)
+    r.HandleFunc("/{id}", h.FindByID).Methods(http.MethodGet)
+    r.HandleFunc("", h.Create).Methods(http.MethodPost)
+    r.HandleFunc("/{id}", h.Update).Methods(http.MethodPatch)
+    r.HandleFunc("/{id}", h.SoftDelete).Methods(http.MethodDelete)
+    r.HandleFunc("/{id}/restore", h.Restore).Methods(http.MethodPost)
+}
+
+// FindAll handles GET /{{ .Package }}.
+func (h *Handler) FindAll(w http.ResponseWriter, r *http.Request) {
+    opts := helper.NewFindAllOptionsFromRequest(r)
+    page, err := h.svc.FindAll(opts)
+    if err != nil {
+        helper.JSONError(w, http.StatusInternalServerError,
+            "Error fetching {{ .Package }}", err.Error())
+        return
+    }
+    helper.JSONResponse(w, http.StatusOK, page)
+}
+
+// FindByID handles GET /{{ .Package }}/{id}.
+func (h *Handler) FindByID(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
+    dto, err := h.svc.FindByID(id)
+    if err != nil {
+        helper.JSONError(w, http.StatusInternalServerError,
+            "Error fetching {{ .Package }}", err.Error())
+        return
+    }
+    if dto == nil {
+        helper.JSONError(w, http.StatusNotFound,
+            "{{ .Name }} not found")
+        return
+    }
+    helper.JSONResponse(w, http.StatusOK, helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} retrieved",
+    })
+}
+
+// Create handles POST /{{ .Package }}.
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+    var input {{ .Name }}Create
+    if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+        helper.JSONError(w, http.StatusBadRequest,
+            "Invalid input", err.Error())
+        return
+    }
+    dto, err := h.svc.Create(&input)
+    if err != nil {
+        helper.JSONError(w, http.StatusInternalServerError,
+            "Error creating {{ .Package }}", err.Error())
+        return
+    }
+    helper.JSONResponse(w, http.StatusCreated, helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} created",
+    })
+}
+
+// Update handles PATCH /{{ .Package }}/{id}.
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
+    var input {{ .Name }}Update
+    if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+        helper.JSONError(w, http.StatusBadRequest,
+            "Invalid body", err.Error())
+        return
+    }
+    dto, err := h.svc.Update(id, &input)
+    if err != nil {
+        helper.JSONError(w, http.StatusInternalServerError,
+            "Error updating {{ .Package }}", err.Error())
+        return
+    }
+    if dto == nil {
+        helper.JSONError(w, http.StatusNotFound,
+            "{{ .Name }} not found")
+        return
+    }
+    helper.JSONResponse(w, http.StatusOK, helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} updated",
+    })
+}
+
+// SoftDelete handles DELETE /{{ .Package }}/{id}.
+func (h *Handler) SoftDelete(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
+    ok, err := h.svc.SoftDelete(id)
+    if err != nil {
+        helper.JSONError(w, http.StatusInternalServerError,
+            "Error deleting {{ .Package }}", err.Error())
+        return
+    }
+    if !ok {
+        helper.JSONError(w, http.StatusNotFound,
+            "{{ .Name }} not found")
+        return
+    }
+    w.WriteHeader(http.StatusNoContent)
+}
+
+// Restore handles POST /{{ .Package }}/{id}/restore.
+func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
+    id := mux.Vars(r)["id"]
+    dto, err := h.svc.Restore(id)
+    if err != nil {
+        helper.JSONError(w, http.StatusInternalServerError,
+            "Error restoring {{ .Package }}", err.Error())
+        return
+    }
+    if dto == nil {
+        helper.JSONError(w, http.StatusNotFound,
+            "{{ .Name }} not found")
+        return
+    }
+    helper.JSONResponse(w, http.StatusOK, helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} restored",
+    })
+}

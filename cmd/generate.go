@@ -15,7 +15,6 @@ import (
 
 /*
 ! TODO:
-- Crear los templates para los dtos, service, handlers.
 - Una vez creado los templates, añadirlo en container.
 - Lo que se ha hecho en container, añádir a api para registrar las rutas
 */
@@ -61,8 +60,8 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 
 	data := map[string]string{
 		"Name":       cases.Title(language.Und, cases.NoLower).String(base),
+		"Package":    base,
 		"ModulePath": modulePath,
-		"Framework":  framework,
 	}
 
 	files := []struct{ tmpl, dstDir, dstName string }{

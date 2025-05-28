@@ -1,11 +1,17 @@
 package models
 
 import (
+    "time"
+
     "github.com/google/uuid"
+    "gorm.io/gorm"
 )
 
-// {{ .Name }} representa la entidad {{ .Name }} en la base de datos.
 type {{ .Name }} struct {
     ID   uuid.UUID `gorm:"type:uuid;primaryKey;"`
     Name string    `gorm:"type:varchar(255);not null"`
+
+    CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 }

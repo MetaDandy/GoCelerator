@@ -1,0 +1,128 @@
+package {{ .Package }}
+
+import (
+    "net/http"
+
+    "github.com/gofiber/fiber/v2"
+    "{{ .ModulePath }}/helper"
+)
+
+// Handler encapsulates HTTP handlers for {{ .Name }}.
+type Handler struct {
+    svc *Service
+}
+
+// NewHandler creates a new Handler.
+func NewHandler(s *Service) *Handler {
+    return &Handler{svc: s}
+}
+
+// RegisterRoutes binds all {{ .Name | lower }} routes to a Fiber router.
+func (h *Handler) RegisterRoutes(router fiber.Router) {
+    grp := router.Group("/{{ .Package }}")
+    grp.Get("", h.FindAll)
+    grp.Get("/:id", h.FindByID)
+    grp.Post("", h.Create)
+    grp.Patch("/:id", h.Update)
+    grp.Delete("/:id", h.SoftDelete)
+    grp.Post("/:id/restore", h.Restore)
+}
+
+// FindAll handles GET /{{ .Package }}
+func (h *Handler) FindAll(c *fiber.Ctx) error {
+    opts := helper.NewFindAllOptionsFromQuery(c)
+    page, err := h.svc.FindAll(opts)
+    if err != nil {
+        return helper.JSONError(c, http.StatusInternalServerError,
+            "Error fetching {{ .Package }}", err.Error())
+    }
+    return c.JSON(page)
+}
+
+// FindByID handles GET /{{ .Package }}/:id
+func (h *Handler) FindByID(c *fiber.Ctx) error {
+    dto, err := h.svc.FindByID(c.Params("id"))
+    if err != nil {
+        return helper.JSONError(c, http.StatusInternalServerError,
+            "Error fetching {{ .Package }}", err.Error())
+    }
+    if dto == nil {
+        return helper.JSONError(c, http.StatusNotFound,
+            "{{ .Name }} not found")
+    }
+    return c.JSON(helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} retrieved",
+    })
+}
+
+// Create handles POST /{{ .Package }}
+func (h *Handler) Create(c *fiber.Ctx) error {
+    var input {{ .Name }}Create
+    if err := c.BodyParser(&input); err != nil {
+        return helper.JSONError(c, http.StatusBadRequest,
+            "Invalid input", err.Error())
+    }
+    dto, err := h.svc.Create(&input)
+    if err != nil {
+        return helper.JSONError(c, http.StatusInternalServerError,
+            "Error creating {{ .Package }}", err.Error())
+    }
+    return c.Status(http.StatusCreated).JSON(helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} created",
+    })
+}
+
+// Update handles PATCH /{{ .Package }}/:id
+func (h *Handler) Update(c *fiber.Ctx) error {
+    var input {{ .Name }}Update
+    if err := c.BodyParser(&input); err != nil {
+        return helper.JSONError(c, http.StatusBadRequest,
+            "Invalid body", err.Error())
+    }
+    dto, err := h.svc.Update(c.Params("id"), &input)
+    if err != nil {
+        return helper.JSONError(c, http.StatusInternalServerError,
+            "Error updating {{ .Package }}", err.Error())
+    }
+    if dto == nil {
+        return helper.JSONError(c, http.StatusNotFound,
+            "{{ .Name }} not found")
+    }
+    return c.JSON(helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} updated",
+    })
+}
+
+// SoftDelete handles DELETE /{{ .Package }}/:id
+func (h *Handler) SoftDelete(c *fiber.Ctx) error {
+    ok, err := h.svc.SoftDelete(c.Params("id"))
+    if err != nil {
+        return helper.JSONError(c, http.StatusInternalServerError,
+            "Error deleting {{ .Package }}", err.Error())
+    }
+    if !ok {
+        return helper.JSONError(c, http.StatusNotFound,
+            "{{ .Name }} not found")
+    }
+    return c.SendStatus(http.StatusNoContent)
+}
+
+// Restore handles POST /{{ .Package }}/:id/restore
+func (h *Handler) Restore(c *fiber.Ctx) error {
+    dto, err := h.svc.Restore(c.Params("id"))
+    if err != nil {
+        return helper.JSONError(c, http.StatusInternalServerError,
+            "Error restoring {{ .Package }}", err.Error())
+    }
+    if dto == nil {
+        return helper.JSONError(c, http.StatusNotFound,
+            "{{ .Name }} not found")
+    }
+    return c.JSON(helper.Response{
+        Data:    dto,
+        Message: "{{ .Name }} restored",
+    })
+}

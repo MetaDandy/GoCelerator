@@ -1,0 +1,132 @@
+package {{ .Package }}
+
+import (
+    "errors"
+    
+	"{{ .ModulePath }}/helper"
+	"{{ .ModulePath }}/src/{{ .Package }}"
+	"{{ .ModulePath }}/src/model"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+// Service encapsulates business logic for {{ .Name }}s.
+type Service struct {
+	repo     *{{ .Package }}.Repository
+}
+
+// NewService creates a new Service.
+func NewService(r *{{ .Package }}.Repository) *Service {
+	return &Service{repo: r}
+}
+
+// FindAll returns a paginated list of {{ .Name }}s.
+func (s *Service) FindAll(opts *helper.FindAllOptions) (*helper.PaginatedResponse[{{ .Name }}Response], error) {
+	entities, total, err := s.repo.FindAll(opts)
+	if err != nil {
+		return nil, err
+	}
+	dtos := {{ .Name }}sToListDTO(entities)
+	pages := uint((total + int64(opts.Limit) - 1) / int64(opts.Limit))
+
+	return &helper.PaginatedResponse[{{ .Name }}Response]{
+		Data:   dtos,
+		Total:  total,
+		Limit:  opts.Limit,
+		Offset: opts.Offset,
+		Pages:  pages,
+	}, nil
+}
+
+// FindByID retrieves a single {{ .Name }} by its ID.
+func (s *Service) FindByID(id string) (*{{ .Name }}Response, error) {
+	entity, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if entity == nil {
+		return nil, nil
+	}
+	dto := {{ .Name }}ToDTO(entity)
+	return &dto, nil
+}
+
+// Create creates a new {{ .Name }}.
+func (s *Service) Create(input *{{ .Name }}Create) (*{{ .Name }}Response, error) {
+	entity := model.{{ .Name }}{
+		ID:   uuid.New(),
+		Name: input.Name,
+		// set other fields from input...
+	}
+
+	if err := s.repo.DB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&entity).Error; err != nil {
+			return err
+		}
+		// any additional operations...
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	reloaded, _ := s.repo.FindByID(entity.ID.String())
+	dto := {{ .Name }}ToDTO(reloaded)
+	return &dto, nil
+}
+
+// Update modifies an existing {{ .Name }}.
+func (s *Service) Update(id string, input *{{ .Name }}Update) (*{{ .Name }}Response, error) {
+	entity, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if entity == nil {
+		return nil, nil
+	}
+
+	if input.Name != nil {
+		entity.Name = *input.Name
+	}
+	// handle other updatable fields...
+
+	if err := s.repo.Update(entity); err != nil {
+		return nil, err
+	}
+
+	reloaded, _ := s.repo.FindByID(id)
+	dto := {{ .Name }}ToDTO(reloaded)
+	return &dto, nil
+}
+
+// SoftDelete marks a {{ .Name }} as deleted.
+func (s *Service) SoftDelete(id string) (bool, error) {
+	entity, err := s.repo.FindByID(id)
+	if err != nil {
+		return false, err
+	}
+	if entity == nil {
+		return false, nil
+	}
+
+	if err := s.repo.SoftDelete(id); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// Restore undeletes a previously soft-deleted {{ .Name }}.
+func (s *Service) Restore(id string) (*{{ .Name }}Response, error) {
+	entity, err := s.repo.FindByIDUnscoped(id)
+	if err != nil {
+		return nil, err
+	}
+	if entity == nil {
+		return nil, errors.New("entity not finded")
+	}
+
+	if err := s.repo.Restore(id); err != nil {
+		return nil, err
+	}
+	dto := {{ .Name }}ToDTO(entity)
+	return &dto, nil
+}

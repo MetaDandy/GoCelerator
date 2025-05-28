@@ -14,6 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+/*
+! TODO:
+hacer que la configuracion sea cargada por main.go
+implementar la logica de la migración
+*/
+
 //go:embed templates/*
 var templatesFS embed.FS
 

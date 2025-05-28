@@ -1,0 +1,48 @@
+package {{ .Package }}
+
+import (
+    "time"
+
+    "{{ .ModulePath }}/src/model"
+)
+
+type {{ .Name }}Create struct {
+    Name string `json:"name" validate:"required"`
+}
+
+type {{ .Name }}Update struct {
+    Name *string `json:"name"`
+}
+
+type {{ .Name }}Response struct {
+    ID          string `json:"id"`
+	Name        string `json:"name"`
+
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+}
+
+func {{ .Name }}ToDTO(u *model.{{ .Name }}) {{ .Name }}Response {
+    var deletedAt *time.Time
+    if u.DeletedAt.Valid {
+        t := u.DeletedAt.Time
+        deletedAt = &t
+    }
+
+    return {{ .Name }}Response{
+        ID:          u.ID.String(),
+        Name:        u.Name,
+        CreatedAt:   u.CreatedAt,
+        UpdatedAt:   u.UpdatedAt,
+        DeletedAt:   deletedAt,
+    }
+}
+
+func {{ .Name }}sToListDTO(list []model.{{ .Name }}) []{{ .Name }}Response {
+    out := make([]{{ .Name }}Response, len(list))
+    for i := range list {
+        out[i] = {{ .Name }}ToDTO(&list[i])
+    }
+    return out
+}
