@@ -13,12 +13,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-/*
-! TODO:
-- Una vez creado los templates, añadirlo en container.
-- Lo que se ha hecho en container, añádir a api para registrar las rutas
-*/
-
 func init() {
 	rootCmd.AddCommand(generateCmd)
 	generateCmd.Flags().BoolVarP(&useFiber, "fiber", "f", false,
@@ -58,8 +52,10 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	baseTitle := cases.Title(language.Und, cases.NoLower).String(base)
+
 	data := map[string]string{
-		"Name":       cases.Title(language.Und, cases.NoLower).String(base),
+		"Name":       baseTitle,
 		"Package":    base,
 		"ModulePath": modulePath,
 	}
@@ -79,5 +75,68 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Module %q generated under src/%s (framework: %s)\n", base, sub, framework)
+
+	containerPath := filepath.Join("src", "container.go")
+	content, err := os.ReadFile(containerPath)
+	if err != nil {
+		return err
+	}
+	text := string(content)
+
+	imp := fmt.Sprintf("\t\"%s/src/%s\"\n", modulePath, sub)
+	field := fmt.Sprintf("\t// %s\n\t%[1]sRepo *%[1]s.Repository\n\t%[1]sSvc  *%[1]s.Service\n\t%[1]sHdl  *%[1]s.Handler\n", baseTitle)
+	init := fmt.Sprintf("\t// %s\n\t%[1]sRepo := %s.NewRepository(config.DB)\n\t%[1]sSvc := %s.NewService(%[1]sRepo)\n\t%[1]sHdl := %s.NewHandler(%[1]sSvc)\n", baseTitle,
+		base, base, base, base, base,
+	)
+	ctor := fmt.Sprintf("\t// %s\n\t%[1]sRepo: %[1]sRepo,\n\t%[1]sSvc:  %[1]sSvc,\n\t%[1]sHdl:  %[1]sHdl,\n", baseTitle)
+
+	text = strings.Replace(text,
+		"// ##module_imports##",
+		"// ##module_imports##\n"+imp,
+		1,
+	)
+	text = strings.Replace(text,
+		"// ##module_fields##",
+		"// ##module_fields##\n"+field,
+		1,
+	)
+	text = strings.Replace(text,
+		"// ##module_inits##",
+		"// ##module_inits##\n"+init,
+		1,
+	)
+	text = strings.Replace(text,
+		"// ##module_ctor##",
+		"// ##module_ctor##\n"+ctor,
+		1,
+	)
+
+	if err := os.WriteFile(containerPath, []byte(text), 0644); err != nil {
+		return err
+	}
+
+	fmt.Printf("Module %q setup in container\n", base)
+
+	apiPath := filepath.Join("cmd", "api", "api.go")
+	content, err = os.ReadFile(apiPath)
+	if err != nil {
+		return err
+	}
+	text = string(content)
+
+	handlerLine := fmt.Sprintf("\tc.%sHdl.RegisterRoutes,\n", baseTitle)
+
+	text = strings.Replace(text,
+		"// ##module_api_handlers##",
+		"// ##module_api_handlers##\n"+handlerLine,
+		1,
+	)
+
+	if err := os.WriteFile(apiPath, []byte(text), 0644); err != nil {
+		return err
+	}
+
+	fmt.Printf("Module %q setup in api\n", base)
+
 	return nil
 }

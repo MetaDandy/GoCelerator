@@ -1,0 +1,25 @@
+package api
+
+import (
+    "{{.ProjectName}}/src"
+    "net/http"
+
+    "github.com/gorilla/mux"
+)
+
+func SetupApi(router *mux.Router, c *src.Container) {
+    api := router.PathPrefix("/api/v1").Subrouter()
+
+    api.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("Aloha goce"))
+    }).Methods(http.MethodGet)
+
+    handlers := []func(*mux.Router){
+        // ##module_api_handlers##
+    }
+
+    // Registramos cada uno sobre el subrouter
+    for _, register := range handlers {
+        register(api)
+    }
+}

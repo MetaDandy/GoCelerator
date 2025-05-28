@@ -1,0 +1,22 @@
+package api
+
+import (
+	"{{.ProjectName}}/src"
+	"github.com/gofiber/fiber/v2"
+)
+
+func SetupApi(app *fiber.App, c *src.Container) {
+	v1 := app.Group("/api/v1")
+
+	app.Get("/", func(ctx *fiber.Ctx) error {
+		return ctx.SendString("Aloha goce")
+	})
+
+	handlers := []func(fiber.Router){
+         // ##module_api_handlers##
+	}
+
+	for _, register := range handlers {
+		register(v1)
+	}
+}
